@@ -18,15 +18,11 @@ class OCREngine:
         try:
             from paddleocr import PaddleOCR
 
-            # 使用轻量级模型，适合云环境部署
-            # 注意：新版本 PaddleOCR 不再支持 use_gpu 参数
-            # 在 CPU 环境下会自动使用 CPU
+            # 使用最简配置，仅保留必需参数
+            # PaddleOCR 3.x 版本移除了 use_gpu 和 show_log 参数
             self.ocr = PaddleOCR(
                 use_angle_cls=True,      # 使用方向分类器
-                lang="ch",                # 中文识别
-                show_log=False,           # 关闭日志输出
-                # 使用默认模型（首次运行会自动下载）
-                # 如需离线部署，可指定det_model_dir和rec_model_dir
+                lang="ch"                # 中文识别
             )
             logger.info("PaddleOCR引擎加载成功")
 
