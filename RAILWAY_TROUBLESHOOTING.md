@@ -99,10 +99,63 @@ git commit -m "Remove custom nixpacks.toml to use default provider"
 git push origin main
 ```
 
-**为什么不需要 nixpacks.toml?**
-- Railway 的默认 Python provider 已经包含所需的系统库
-- `runtime.txt` 已足够指定 Python 版本
-- 简化配置，减少潜在错误
+---
+
+## 🔧 问题3: OpenCV 缺少 OpenGL 库 (libGL.so.1)
+
+### 错误日志
+```
+ERROR:app.utils.ocr_engine:PaddleOCR加载失败: libGL.so.1: cannot open shared object file: No such file or directory
+ERROR:app.main:OCR引擎初始化失败: libGL.so.1: cannot open shared object file: No such file or directory
+```
+
+### 根本原因
+`opencv-python-headless` 依赖 OpenGL 库 (`libGL.so.1`)，但 Railway 默认环境没有安装。
+
+### 解决方案
+创建正确的 `nixpacks.toml` 文件，添加 OpenGL 系统依赖。
+
+#### 步骤 1: 创建 `nixpacks.toml`
+
+在 `ocr-service/` 目录下创建 `nixpacks.toml`:
+
+```bash
+cd ocr-service
+cat > nixpacks.toml << 'EOF'
+[phases.setup]
+nixPkgs = ["python310", "libGL", "libglvnd"]
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+EOF
+```
+
+文件内容:
+```toml
+[phases.setup]
+nixPkgs = ["python310", "libGL", "libglvnd"]
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+```
+
+#### 步骤 2: 推送到 GitHub
+```bash
+cd ocr-service
+git add nixpacks.toml
+git commit -m "Fix: Add OpenGL library dependency for OpenCV"
+git push origin main
+```
+
+#### 关键配置说明
+- `libGL` - OpenGL 核心库
+- `libglvnd` - OpenGL vendor-neutral dispatch 库
+- 这两个库是 OpenCV 运行所必需的
+
+**为什么现在需要 nixpacks.toml?**
+- Railway 的默认 Python provider **不包含** OpenGL 库
+- `opencv-python-headless` 运行时需要 `libGL.so.1`
+- 必须通过 `nixpacks.toml` 明确指定系统依赖
 
 ---
 
@@ -112,6 +165,7 @@ git push origin main
 ```
 ocr-service/
 ├── runtime.txt          # ⭐ 必需：指定 Python 版本
+├── nixpacks.toml        # ⭐ 必需：指定系统依赖（OpenGL）
 ├── requirements.txt     # ⭐ 必需：Python 依赖
 ├── railway.json         # 可选：Railway 配置
 ├── Procfile            # 可选：启动命令（railway.json 已配置）
@@ -124,6 +178,15 @@ ocr-service/
 **runtime.txt** (必需):
 ```
 python-3.10.14
+```
+
+**nixpacks.toml** (必需):
+```toml
+[phases.setup]
+nixPkgs = ["python310", "libGL", "libglvnd"]
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 ```
 
 **railway.json** (推荐):
@@ -212,8 +275,14 @@ python test_ocr.py
 - 初始版本
 - 记录 Python 版本兼容性问题
 - 记录 Nix 包配置问题
+- 记录 OpenGL 库缺失问题（问题3）
 - 提供完整解决方案
 
 ---
 
-**下次遇到部署问题时，请先检查 `runtime.txt` 是否存在且正确！**
+**下次遇到部署问题时，请按以下顺序检查**:
+1. ✅ `runtime.txt` 存在且指定 Python 3.10.14
+2. ✅ `nixpacks.toml` 存在且包含 OpenGL 依赖
+3. ✅ `requirements.txt` 使用宽松版本约束
+4. ✅ Railway 日志显示 OCR 模型加载成功
+
