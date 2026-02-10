@@ -150,11 +150,13 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 **关键说明**:
 - `libgl1` - Mesa OpenGL 库（提供 libGL.so.1，Debian Trixie 使用的新包名）
 - `libglib2.0-0` - GLib 库（运行时依赖）
+- `libgomp1` - GNU OpenMP 库（提供 libgomp.so.1，PaddlePaddle 并行计算需要）
 - 使用 `python:3.10-slim` 基础镜像（基于 Debian Trixie）
 
 **包名说明**:
 - ❌ `libgl1-mesa-glx` - 旧版本 Debian 的包名，在 Trixie 中已废弃
 - ✅ `libgl1` - Debian Trixie 中的新包名
+- ✅ `libgomp1` - OpenMP 库，必需的系统依赖
 
 #### 步骤 2: 确保 `requirements.txt` 使用 `opencv-python-headless`
 
@@ -238,6 +240,7 @@ FROM python:3.10-slim
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -249,11 +252,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Expose port
+# Expose port (Railway sets $PORT dynamically)
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application using shell form to expand $PORT variable
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
 ```
 
 **requirements.txt**:
