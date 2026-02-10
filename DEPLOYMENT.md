@@ -212,12 +212,61 @@ const OCR_SERVICE_URL = 'https://your-app-name.railway.app/ocr/text';
 
 ### 问题1: 部署失败
 
-**症状**: Railway控制台显示部署错误
+#### 症状1: pip install 失败 (exit code: 1)
 
-**解决方案**:
+**错误信息**:
+```
+ERROR: failed to build: failed to solve: process "/bin/bash -ol pipefail -c python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install -r requirements.txt" did not complete successfully: exit code: 1
+```
+
+**根本原因**: PaddlePaddle 2.6.2 不兼容 Python 3.12（Railway 默认版本）
+
+**解决方案** (已实施):
+1. 创建 `runtime.txt` 文件，指定 Python 版本为 3.10.14:
+   ```
+   python-3.10.14
+   ```
+2. 优化 `requirements.txt`，将严格版本约束 (`==`) 改为宽松约束 (`>=`):
+   ```txt
+   fastapi>=0.104.1
+   uvicorn[standard]>=0.24.0
+   python-multipart>=0.0.6
+   pydantic>=2.5.0
+   paddlepaddle>=2.5.0
+   paddleocr>=2.7.0
+   opencv-python-headless>=4.8.0
+   pillow>=10.0.0
+   numpy>=1.24.0
+   ```
+
+#### 症状2: Nix 包错误 (undefined variable 'libglib')
+
+**错误信息**:
+```
+error: undefined variable 'libglib'
+at /app/.nixpacks/nixpkgs-...nix:19:19
+```
+
+**根本原因**: 自定义 `nixpacks.toml` 中使用了不存在的 Nix 包名
+
+**解决方案** (已实施):
+- **删除** `nixpacks.toml`，使用 Railway 默认 Python provider
+- 仅依赖 `runtime.txt` 指定 Python 版本即可
+
+**关键配置文件**:
+```
+ocr-service/
+├── runtime.txt          # 必需：指定 Python 3.10.14
+├── requirements.txt     # 已优化：使用 >= 约束
+├── railway.json         # Railway 配置（使用 NIXPACKS builder）
+└── Procfile            # 启动命令
+```
+
+**通用排查步骤**:
 1. 检查 `requirements.txt` 版本兼容性
 2. 查看Railway部署日志
-3. 确保Python版本为3.8+
+3. 确保 Python 版本与 PaddlePaddle 兼容（推荐 3.10）
+4. 避免自定义 `nixpacks.toml`，使用 Railway 默认配置
 
 ### 问题2: 小程序请求失败
 
