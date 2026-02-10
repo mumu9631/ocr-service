@@ -31,17 +31,17 @@ def test_ocr_service(image_path, service_url="http://localhost:8000/ocr/text"):
 
     # 检查文件是否存在
     if not Path(image_path).exists():
-        print(f"❌ 错误: 文件不存在 - {image_path}")
+        print(f"[ERROR] File not found - {image_path}")
         return False
 
     try:
         # 转换图片为Base64
-        print("📸 正在读取图片...")
+        print("Reading image...")
         image_base64 = image_to_base64(image_path)
-        print(f"✅ 图片读取成功 (大小: {len(image_base64)} 字符)")
+        print(f"Image read successfully (size: {len(image_base64)} characters)")
 
         # 调用OCR服务
-        print("🔍 正在调用OCR服务...")
+        print("Calling OCR service...")
         response = requests.post(
             service_url,
             json={"image_base64": image_base64},
@@ -53,39 +53,39 @@ def test_ocr_service(image_path, service_url="http://localhost:8000/ocr/text"):
             result = response.json()
 
             if result.get('success'):
-                print(f"\n✅ OCR识别成功!")
-                print(f"共识别到 {len(result.get('data', []))} 个文本块\n")
+                print(f"\n[SUCCESS] OCR recognition successful!")
+                print(f"Total text blocks detected: {len(result.get('data', []))}\n")
 
                 # 打印每个文本块
                 for idx, item in enumerate(result.get('data', []), 1):
                     print(f"[{idx}] {item['text']}")
-                    print(f"    置信度: {item['confidence']*100:.1f}%")
-                    print(f"    位置: {item['box']}")
+                    print(f"    Confidence: {item['confidence']*100:.1f}%")
+                    print(f"    Position: {item['box']}")
                     print()
 
                 # 打印原始文本
-                print("---------- 原始文本 ----------")
+                print("---------- Raw Text ----------")
                 print(result.get('raw_text', ''))
                 print("-" * 50)
 
                 return True
             else:
-                print(f"❌ OCR识别失败: {result.get('message')}")
+                print(f"[ERROR] OCR recognition failed: {result.get('message')}")
                 return False
         else:
-            print(f"❌ HTTP错误: {response.status_code}")
-            print(f"响应内容: {response.text}")
+            print(f"[ERROR] HTTP error: {response.status_code}")
+            print(f"Response: {response.text}")
             return False
 
     except requests.exceptions.Timeout:
-        print("❌ 错误: 请求超时（30秒）")
+        print("[ERROR] Request timeout (30 seconds)")
         return False
     except requests.exceptions.ConnectionError:
-        print(f"❌ 错误: 无法连接到OCR服务 ({service_url})")
-        print("请确保服务已启动: uvicorn app.main:app --reload")
+        print(f"[ERROR] Cannot connect to OCR service ({service_url})")
+        print("Please ensure the service is running: uvicorn app.main:app --reload")
         return False
     except Exception as e:
-        print(f"❌ 错误: {str(e)}")
+        print(f"[ERROR] {str(e)}")
         return False
 
 

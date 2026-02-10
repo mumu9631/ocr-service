@@ -3,7 +3,7 @@ PaddleOCR食品标签识别服务
 部署于Railway.app
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -41,6 +41,11 @@ class OCRResult(BaseModel):
     text: str
     confidence: float
     box: List[List[float]]
+
+
+class OCRRequest(BaseModel):
+    """OCR请求"""
+    image_base64: str
 
 
 class OCRResponse(BaseModel):
@@ -84,12 +89,12 @@ async def health_check():
 
 
 @app.post("/ocr/text", response_model=OCRResponse)
-async def recognize_text(image_base64: str):
+async def recognize_text(request: OCRRequest):
     """
     识别图片中的所有文字（接收Base64编码的图片）
 
     参数:
-        image_base64: Base64编码的图片字符串（不含data:image前缀）
+        request: OCR请求对象，包含image_base64字段
 
     返回:
         OCRResponse: 包含识别结果和原始文本
@@ -99,7 +104,7 @@ async def recognize_text(image_base64: str):
 
     try:
         # 解码Base64图片
-        image_data = base64.b64decode(image_base64)
+        image_data = base64.b64decode(request.image_base64)
         image = Image.open(io.BytesIO(image_data))
 
         # 执行OCR识别
