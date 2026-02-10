@@ -133,11 +133,22 @@ EOF
 文件内容:
 ```toml
 [phases.setup]
-nixPkgs = ["python310", "libGL", "libglvnd"]
+nixPkgs = ["python310", "freeglut", "mesa", "xorg.libGL", "glib"]
 
 [start]
 cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 ```
+
+#### 关键配置说明
+- `freeglut` - OpenGL Utility Toolkit（提供 GLU 和 GLUT）
+- `mesa` - Mesa 3D 图形库（开源 OpenGL 实现）
+- `xorg.libGL` - X.org OpenGL 核心库
+- `glib` - GLib 库（OpenGL 依赖）
+
+**包名说明**:
+- ❌ `libGL` 和 `libglvnd` 不是正确的 Nix 包名
+- ✅ `xorg.libGL` 是 Nix 中正确的 OpenGL 库包名
+- ✅ `mesa` 提供 OpenGL 运行时支持
 
 #### 步骤 2: 推送到 GitHub
 ```bash
@@ -183,7 +194,7 @@ python-3.10.14
 **nixpacks.toml** (必需):
 ```toml
 [phases.setup]
-nixPkgs = ["python310", "libGL", "libglvnd"]
+nixPkgs = ["python310", "freeglut", "mesa", "xorg.libGL", "glib"]
 
 [start]
 cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"

@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["python310", "libGL", "libglvnd"]
+nixPkgs = ["python310", "freeglut", "mesa", "xorg.libGL", "glib"]
 
 [start]
 cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
