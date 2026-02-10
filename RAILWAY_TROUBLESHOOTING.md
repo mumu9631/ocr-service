@@ -110,78 +110,74 @@ ERROR:app.main:OCR引擎初始化失败: libGL.so.1: cannot open shared object f
 ```
 
 ### 根本原因
-`opencv-python-headless` 依赖 OpenGL 库 (`libGL.so.1`)，但 Railway 默认环境没有安装。
+`opencv-python-headless` 依赖 OpenGL 库 (`libGL.so.1`)，但 Railway 环境难以正确配置所有系统依赖。
 
-### 解决方案
-创建正确的 `nixpacks.toml` 文件，添加 OpenGL 系统依赖。
+### 最终解决方案
+**使用 `opencv-python` 替代 `opencv-python-headless`**
 
-#### 步骤 1: 创建 `nixpacks.toml`
+`opencv-python` 是完整版本，包含了所有必要的依赖，更适合在 Railway 等云平台上部署。
 
-在 `ocr-service/` 目录下创建 `nixpacks.toml`:
+#### 步骤 1: 修改 `requirements.txt`
+
+将 `opencv-python-headless` 替换为 `opencv-python`:
+
+**修改前**:
+```txt
+opencv-python-headless>=4.8.0
+```
+
+**修改后**:
+```txt
+opencv-python>=4.8.0
+```
+
+#### 步骤 2: 删除 `nixpacks.toml`（如果存在）
 
 ```bash
 cd ocr-service
-cat > nixpacks.toml << 'EOF'
-[phases.setup]
-nixPkgs = ["python310", "libGL", "libglvnd"]
-
-[start]
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-EOF
+rm nixpacks.toml
 ```
 
-文件内容:
-```toml
-[phases.setup]
-nixPkgs = ["python310", "mesa", "freeglut"]
+使用 Railway 默认配置，无需自定义系统依赖。
 
-[start]
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
-```
-
-#### 关键配置说明
-- `mesa` - Mesa 3D 图形库（开源 OpenGL 实现，包含 libGL.so）
-- `freeglut` - OpenGL Utility Toolkit（提供 GLU 和 GLUT）
-
-**包名说明**:
-- ❌ `libGL`, `libglvnd`, `xorg.libGL`, `glib` - 这些不是正确的或不必要的 Nix 包名
-- ✅ `mesa` 是 Nix 中正确的 OpenGL 库包名，已包含 libGL.so.1
-- ✅ `freeglut` 提供额外的 OpenGL 工具函数
-
-**简化配置原则**:
-- 只安装必要的包，减少依赖冲突
-- `mesa` 包已经包含了 OpenCV 需要的 OpenGL 库
-
-#### 步骤 2: 推送到 GitHub
+#### 步骤 3: 推送到 GitHub
 ```bash
 cd ocr-service
-git add nixpacks.toml
-git commit -m "Fix: Add OpenGL library dependency for OpenCV"
+git add requirements.txt
+git rm nixpacks.toml  # 如果删除了的话
+git commit -m "Fix: Use opencv-python instead of headless"
 git push origin main
 ```
 
-#### 关键配置说明
-- `libGL` - OpenGL 核心库
-- `libglvnd` - OpenGL vendor-neutral dispatch 库
-- 这两个库是 OpenCV 运行所必需的
-
-**为什么现在需要 nixpacks.toml?**
-- Railway 的默认 Python provider **不包含** OpenGL 库
-- `opencv-python-headless` 运行时需要 `libGL.so.1`
-- 必须通过 `nixpacks.toml` 明确指定系统依赖
+#### 为什么 opencv-python 更好？
+- ✅ `opencv-python` - 完整版，包含所有依赖，自包含
+- ❌ `opencv-python-headless` - 精简版，需要系统提供 OpenGL 库
+- ✅ 无需配置 `nixpacks.toml`
+- ✅ 部署更简单，更稳定
 
 ---
 
-## ✅ 最终配置
+## 🔧 问题4: Nix 包名不正确（已废弃）
+
+**注意**：这个问题通过使用 `opencv-python` 已经解决，不再需要 `nixpacks.toml`。
+
+之前尝试过以下包名（均失败）：
+- ❌ `libGL`, `libglvnd` - 不存在的包名
+- ❌ `xorg.libGL` - 不存在的包名
+- ❌ `mesa`, `freeglut` - 包存在但无法解决运行时链接问题
+
+**教训**：在 Railway 上使用 `opencv-python` 而不是 `opencv-python-headless`，避免复杂的系统依赖配置。
+
+---
+
+## ✅ 最终配置（2025-02-10 更新）
 
 ### 必需文件
 ```
 ocr-service/
 ├── runtime.txt          # ⭐ 必需：指定 Python 版本
-├── nixpacks.toml        # ⭐ 必需：指定系统依赖（OpenGL）
-├── requirements.txt     # ⭐ 必需：Python 依赖
+├── requirements.txt     # ⭐ 必需：Python 依赖（使用 opencv-python）
 ├── railway.json         # 可选：Railway 配置
-├── Procfile            # 可选：启动命令（railway.json 已配置）
 └── app/
     └── main.py         # FastAPI 应用入口
 ```
@@ -193,13 +189,17 @@ ocr-service/
 python-3.10.14
 ```
 
-**nixpacks.toml** (必需):
-```toml
-[phases.setup]
-nixPkgs = ["python310", "mesa", "freeglut"]
-
-[start]
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+**requirements.txt** (关键 - 使用 opencv-python):
+```txt
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+pydantic>=2.5.0
+paddlepaddle>=2.5.0
+paddleocr>=2.7.0
+opencv-python>=4.8.0    ← 注意：不是 opencv-python-headless
+pillow>=10.0.0
+numpy>=1.24.0
 ```
 
 **railway.json** (推荐):
@@ -218,18 +218,13 @@ cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 }
 ```
 
-**requirements.txt** (关键依赖):
-```txt
-fastapi>=0.104.1
-uvicorn[standard]>=0.24.0
-python-multipart>=0.0.6
-pydantic>=2.5.0
-paddlepaddle>=2.5.0
-paddleocr>=2.7.0
-opencv-python-headless>=4.8.0
-pillow>=10.0.0
-numpy>=1.24.0
-```
+### 重要说明
+
+**不需要 `nixpacks.toml`！**
+
+使用 `opencv-python` 替代 `opencv-python-headless` 后，Railway 的默认配置即可正常工作，无需自定义系统依赖。
+
+---
 
 ---
 
