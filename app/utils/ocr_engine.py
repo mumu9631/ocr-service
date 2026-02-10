@@ -52,7 +52,8 @@ class OCREngine:
                 img_array = img_array[:, :, ::-1]
 
             # 执行OCR识别
-            result = self.ocr.ocr(img_array, cls=True)
+            # cls参数已在初始化时通过use_angle_cls设置，这里不需要再传
+            result = self.ocr.ocr(img_array)
 
             # 如果没有识别结果
             if not result or not result[0]:
