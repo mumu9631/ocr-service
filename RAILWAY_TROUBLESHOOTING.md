@@ -125,8 +125,9 @@ ERROR:app.main:OCR引擎初始化失败: libGL.so.1: cannot open shared object f
 FROM python:3.10-slim
 
 # Install system dependencies
+# Use libgl1 instead of libgl1-mesa-glx for Debian Trixie compatibility
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -147,9 +148,13 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 **关键说明**:
-- `libgl1-mesa-glx` - Mesa OpenGL 库（提供 libGL.so.1）
+- `libgl1` - Mesa OpenGL 库（提供 libGL.so.1，Debian Trixie 使用的新包名）
 - `libglib2.0-0` - GLib 库（运行时依赖）
-- 使用 `python:3.10-slim` 基础镜像
+- 使用 `python:3.10-slim` 基础镜像（基于 Debian Trixie）
+
+**包名说明**:
+- ❌ `libgl1-mesa-glx` - 旧版本 Debian 的包名，在 Trixie 中已废弃
+- ✅ `libgl1` - Debian Trixie 中的新包名
 
 #### 步骤 2: 确保 `requirements.txt` 使用 `opencv-python-headless`
 
@@ -189,10 +194,11 @@ git push origin main
 ```
 
 #### 为什么 Dockerfile 方案有效？
-- ✅ 明确使用 `apt-get` 安装 `libgl1-mesa-glx`
+- ✅ 明确使用 `apt-get` 安装 `libgl1`
 - ✅ 控制完整的构建过程
 - ✅ 不依赖 Nixpacks 的包名解析
 - ✅ Docker 是 Railway 的原生支持，非常稳定
+- ✅ 使用 Debian Trixie 的正确包名
 
 ---
 
@@ -228,8 +234,9 @@ ocr-service/
 FROM python:3.10-slim
 
 # Install system dependencies
+# Use libgl1 instead of libgl1-mesa-glx for Debian Trixie compatibility
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
